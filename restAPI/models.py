@@ -13,24 +13,21 @@ class Post(models.Model):
     tag:标签,多对多
     author:作者,一对多
     """
-    title = models.CharField(max_length=100, blank=True, default='')
+    title = models.CharField(max_length=100, blank=True, default="")
     body = models.TextField()
     pub_time = models.DateTimeField(auto_now_add=True)
-    tag = models.ManyToManyField('Tag', related_name='posts', blank=True)
+    tags = models.ManyToManyField('Tag', related_name='posts', blank=True)
     author = models.ForeignKey('auth.User', related_name='posts', on_delete=models.CASCADE)
 
     class Meta:
         ordering = ('-pub_time',)
 
     # 文章摘要
-    def get_excerpt(self):
+    def excerpt(self):
         excerpt = str(self.body)
         if excerpt.__len__() > 50:
             excerpt = excerpt[:50]+'...'
         return excerpt
-
-    def __str__(self):
-        return str(self.author)+" "+str(self.get_excerpt())
 
 
 class Tag(models.Model):
@@ -38,3 +35,25 @@ class Tag(models.Model):
 
     def __str__(self):
         return str(self.name)
+
+
+class Comment(models.Model):
+    user = models.ForeignKey('auth.User', related_name='comments', on_delete=models.CASCADE)
+    pub_time = models.DateTimeField(auto_now_add=True)
+    body = models.CharField(max_length=300)
+    post = models.ForeignKey(Post, related_name='comments', on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ('-pub_time',)
+
+
+class Reply(models.Model):
+    user = models.ForeignKey('auth.User', related_name='replies', on_delete=models.CASCADE)
+    pub_time = models.DateTimeField(auto_now_add=True)
+    body = models.CharField(max_length=300)
+    post = models.ForeignKey(Post, related_name='replies', on_delete=models.CASCADE)
+    comment = models.ForeignKey(Comment, related_name="replies", on_delete=models.CASCADE)
+
+    class Meta:
+        ordering = ('-pub_time',)
+

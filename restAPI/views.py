@@ -1,8 +1,8 @@
 from rest_framework import viewsets, permissions, mixins
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from restAPI.models import Post, Tag
-from restAPI.serializers import PostSerializer, TagSerializer, UserSerializer, PostSerializerLite
+from restAPI.models import Post, Tag, Comment, Reply
+from restAPI.serializers import PostSerializer, TagSerializer, UserSerializer, PostSerializerLite, CommentSerializer, ReplySerializer
 from restAPI.permissions import IsAuthorOrReadOnly
 
 
@@ -56,3 +56,40 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+
+class CommentViewSet(mixins.CreateModelMixin,
+                     mixins.RetrieveModelMixin,
+                     mixins.ListModelMixin,
+                     viewsets.GenericViewSet):
+    """
+    处理 /api/comments POST, 处理 /api/comments/<pk> GET
+    """
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+
+    def perform_create(self, serializer):
+        """
+        重写 perform_create
+        user 信息不在 request.data 中, 在保存时加入 user 信息
+        """
+        serializer.save(user=self.request.user)
+
+
+class ReplyViewSet(mixins.CreateModelMixin,
+                   mixins.RetrieveModelMixin,
+                   mixins.ListModelMixin,
+                   viewsets.GenericViewSet):
+    """
+    处理 /api/replies POST, 处理 /api/replies/<pk> GET
+    """
+    queryset = Reply.objects.all()
+    serializer_class = ReplySerializer
+    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+
+    def perform_create(self, serializer):
+        """
+        重写 perform_create
+        user 信息不在 request.data 中, 在保存时加入 user 信息
+        """
+        serializer.save(user=self.request.user)

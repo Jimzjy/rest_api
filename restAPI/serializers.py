@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
-from restAPI.models import Post, Tag
+from restAPI.models import Post, Tag, Comment, Reply
 
 
 class UserSerializerLite(serializers.HyperlinkedModelSerializer):
     """
-    用于在Post的序列化器中的, 只包含 'url' 'username' 的User序列化器
+    只包含 'url' 'username' 的User序列化器
     """
     class Meta:
         model = User
@@ -15,11 +15,45 @@ class UserSerializerLite(serializers.HyperlinkedModelSerializer):
 
 class TagSerializerLite(serializers.HyperlinkedModelSerializer):
     """
-    用于在Post的序列化器中, 只包含 'url' 'name' 的Tag序列化器
+    只包含 'url' 'name' 的Tag序列化器
     """
     class Meta:
         model = Tag
         fields = ('url', 'name')
+
+
+class CommentSerializerLite(serializers.HyperlinkedModelSerializer):
+    """
+    Comment序列化器
+    """
+    user = UserSerializerLite(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ('url', 'id', 'user', 'pub_time', 'body')
+
+
+class CommentSerializerReply(serializers.ModelSerializer):
+    """
+    只包含 'id', 'user' 的Comment序列化器
+    """
+    user = UserSerializerLite(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ('id', 'user')
+
+
+class ReplySerializerLite(serializers.HyperlinkedModelSerializer):
+    """
+    Reply序列化器
+    """
+    user = UserSerializerLite(read_only=True)
+    comment = CommentSerializerReply(read_only=True)
+
+    class Meta:
+        model = Reply
+        fields = ('url', 'id', 'user', 'pub_time', 'body', 'comment')
 
 
 class PostSerializer(serializers.HyperlinkedModelSerializer):
@@ -27,11 +61,13 @@ class PostSerializer(serializers.HyperlinkedModelSerializer):
     Post序列化器
     """
     author = UserSerializerLite(read_only=True)
-    tag = TagSerializerLite(many=True)
+    tags = TagSerializerLite(many=True)
+    comments = CommentSerializerLite(many=True, read_only=True)
+    replies = ReplySerializerLite(many=True, read_only=True)
 
     class Meta:
         model = Post
-        fields = ('url', 'id', 'title', 'pub_time', 'author', 'body', 'tag')
+        fields = ('url', 'id', 'title', 'pub_time', 'author', 'body', 'tags', 'comments', 'replies')
 
     @staticmethod
     def addtag(tags, post):
@@ -78,24 +114,25 @@ class PostSerializer(serializers.HyperlinkedModelSerializer):
 
 class PostSerializerLite(serializers.HyperlinkedModelSerializer):
     """
-    用于 Tag, User 序列化器中, 只包含 'url' 'title' 'author' 'body' 的序列化器
+    只包含 'url' 'title' 'author' 'body' 的Post序列化器
+    excerpt: Post 的 excerpt() 方法, 将 'body' 中 长度大于 50 的截断 + "..."
     """
     author = UserSerializerLite(read_only=True)
 
-    def to_representation(self, instance):
-        """
-        重写 to_representation 改变生成的序列, 将 'body' 中大于 50 长度的截断
-        """
-        ret = super(PostSerializerLite, self).to_representation(instance)
-        excerpt = ret['body']
-        if str(excerpt).__len__() > 50:
-            excerpt = excerpt[:50] + '...'
-        ret['body'] = excerpt
-        return ret
+    # def to_representation(self, instance):
+    #     """
+    #     重写 to_representation 改变生成的序列, 将 'body' 中大于 50 长度的截断
+    #     """
+    #     ret = super(PostSerializerLite, self).to_representation(instance)
+    #     excerpt = ret['body']
+    #     if str(excerpt).__len__() > 50:
+    #         excerpt = excerpt[:50] + '...'
+    #     ret['body'] = excerpt
+    #     return ret
 
     class Meta:
         model = Post
-        fields = ('url', 'title', 'author', 'body')
+        fields = ('url', 'title', 'author', 'excerpt')
 
 
 class TagSerializer(serializers.HyperlinkedModelSerializer):
@@ -118,3 +155,27 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = ('url', 'id', 'username', 'posts')
+
+
+class CommentSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    Comment序列化器
+    """
+    user = UserSerializerLite(read_only=True)
+    replies = ReplySerializerLite(many=True, read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ('url', 'id', 'user', 'pub_time', 'body', 'post', 'replies')
+
+
+class ReplySerializer(serializers.HyperlinkedModelSerializer):
+    """
+    Reply序列化器
+    """
+    user = UserSerializerLite(read_only=True)
+    comment = CommentSerializerLite(read_only=True)
+
+    class Meta:
+        model = Reply
+        fields = ('url', 'id', 'user', 'pub_time', 'body', 'post', 'comment')
