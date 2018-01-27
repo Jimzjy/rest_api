@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
-from restAPI.models import Post, Tag, Comment, Reply
+from restAPI.models import Post, Tag, Comment
 
 
 class UserSerializerLite(serializers.HyperlinkedModelSerializer):
@@ -22,38 +22,26 @@ class TagSerializerLite(serializers.HyperlinkedModelSerializer):
         fields = ('url', 'name')
 
 
+class ReplyCommentSerializer(serializers.HyperlinkedModelSerializer):
+    """
+    Comment序列化器, 用于序列化 被回复者 的信息
+    """
+    user = UserSerializerLite(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ('url', 'id', 'user')
+
+
 class CommentSerializerLite(serializers.HyperlinkedModelSerializer):
     """
     Comment序列化器
     """
-    user = UserSerializerLite(read_only=True)
+    reply_comment = ReplyCommentSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ('url', 'id', 'user', 'pub_time', 'body')
-
-
-class CommentSerializerReply(serializers.ModelSerializer):
-    """
-    只包含 'id', 'user' 的Comment序列化器
-    """
-    user = UserSerializerLite(read_only=True)
-
-    class Meta:
-        model = Comment
-        fields = ('id', 'user')
-
-
-class ReplySerializerLite(serializers.HyperlinkedModelSerializer):
-    """
-    Reply序列化器
-    """
-    user = UserSerializerLite(read_only=True)
-    comment = CommentSerializerReply(read_only=True)
-
-    class Meta:
-        model = Reply
-        fields = ('url', 'id', 'user', 'pub_time', 'body', 'comment')
+        fields = ('url', 'id', 'pub_time', 'body', 'reply_comment')
 
 
 class PostSerializer(serializers.HyperlinkedModelSerializer):
@@ -63,11 +51,10 @@ class PostSerializer(serializers.HyperlinkedModelSerializer):
     author = UserSerializerLite(read_only=True)
     tags = TagSerializerLite(many=True)
     comments = CommentSerializerLite(many=True, read_only=True)
-    replies = ReplySerializerLite(many=True, read_only=True)
 
     class Meta:
         model = Post
-        fields = ('url', 'id', 'title', 'pub_time', 'author', 'body', 'tags', 'comments', 'replies')
+        fields = ('url', 'id', 'title', 'pub_time', 'author', 'body', 'tags', 'comments')
 
     @staticmethod
     def addtag(tags, post):
@@ -93,9 +80,10 @@ class PostSerializer(serializers.HyperlinkedModelSerializer):
         重写 create ,从 validated_data 中取出 tag ,
         添加 Post 后调用 addtag() 添加 tag 关系
         """
-        tags = validated_data.pop('tag')
+        tags = validated_data.pop('tags')
         post = Post.objects.create(**validated_data)
-        self.addtag(tags, post)
+        if tags is not None:
+            self.addtag(tags, post)
         return post
 
     def update(self, instance, validated_data):
@@ -106,9 +94,10 @@ class PostSerializer(serializers.HyperlinkedModelSerializer):
         instance.title = validated_data.get('title', instance.title)
         instance.body = validated_data.get('body', instance.body)
         instance.save()
-        instance.tag.clear()
-        tags = validated_data.get('tag')
-        self.addtag(tags, instance)
+        instance.tags.clear()
+        tags = validated_data.get('tags')
+        if tags is not None:
+            self.addtag(tags, instance)
         return instance
 
 
@@ -161,21 +150,8 @@ class CommentSerializer(serializers.HyperlinkedModelSerializer):
     """
     Comment序列化器
     """
-    user = UserSerializerLite(read_only=True)
-    replies = ReplySerializerLite(many=True, read_only=True)
+    reply_comment = ReplyCommentSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ('url', 'id', 'user', 'pub_time', 'body', 'post', 'replies')
-
-
-class ReplySerializer(serializers.HyperlinkedModelSerializer):
-    """
-    Reply序列化器
-    """
-    user = UserSerializerLite(read_only=True)
-    comment = CommentSerializerLite(read_only=True)
-
-    class Meta:
-        model = Reply
-        fields = ('url', 'id', 'user', 'pub_time', 'body', 'post', 'comment')
+        fields = ('url', 'id', 'pub_time', 'body', 'reply_comment', 'in_post', 'replies')

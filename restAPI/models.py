@@ -41,19 +41,10 @@ class Comment(models.Model):
     user = models.ForeignKey('auth.User', related_name='comments', on_delete=models.CASCADE)
     pub_time = models.DateTimeField(auto_now_add=True)
     body = models.CharField(max_length=300)
-    post = models.ForeignKey(Post, related_name='comments', on_delete=models.CASCADE)
+    in_post = models.ForeignKey(Post, related_name='comments', on_delete=models.CASCADE)
+    reply_comment = models.ForeignKey('self', related_name='replies', on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:
         ordering = ('-pub_time',)
 
-
-class Reply(models.Model):
-    user = models.ForeignKey('auth.User', related_name='replies', on_delete=models.CASCADE)
-    pub_time = models.DateTimeField(auto_now_add=True)
-    body = models.CharField(max_length=300)
-    post = models.ForeignKey(Post, related_name='replies', on_delete=models.CASCADE)
-    comment = models.ForeignKey(Comment, related_name="replies", on_delete=models.CASCADE)
-
-    class Meta:
-        ordering = ('-pub_time',)
 
