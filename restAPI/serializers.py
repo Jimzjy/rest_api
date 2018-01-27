@@ -35,7 +35,7 @@ class ReplyCommentSerializer(serializers.HyperlinkedModelSerializer):
 
 class CommentSerializerLite(serializers.HyperlinkedModelSerializer):
     """
-    Comment序列化器
+    只包含 'url', 'id', 'pub_time', 'body', 'reply_comment' 的Comment序列化器
     """
     reply_comment = ReplyCommentSerializer(read_only=True)
 
