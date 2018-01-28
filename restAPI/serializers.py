@@ -149,6 +149,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
 class CommentSerializer(serializers.HyperlinkedModelSerializer):
     """
     Comment序列化器
+    replies: 属于此评论的回复
     """
     reply_comment = ReplyCommentSerializer(read_only=True)
 
