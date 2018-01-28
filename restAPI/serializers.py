@@ -156,3 +156,21 @@ class CommentSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Comment
         fields = ('url', 'id', 'pub_time', 'body', 'reply_comment', 'in_post', 'replies')
+
+
+class UserChangedSerializer(serializers.ModelSerializer):
+    """
+    注册,修改 用户信息的User序列化器
+    """
+    class Meta:
+        model = User
+        fields = ('username', 'password')
+
+    def create(self, validated_data):
+        user = User.objects.create_user(**validated_data)
+        return user
+
+    def update(self, instance, validated_data):
+        instance.set_password(validated_data.get('password'))
+        instance.save()
+        return instance

@@ -2,8 +2,8 @@ from rest_framework import viewsets, permissions, mixins
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from restAPI.models import Post, Tag, Comment
-from restAPI.serializers import PostSerializer, TagSerializer, UserSerializer, PostSerializerLite, CommentSerializer
-from restAPI.permissions import IsAuthorOrReadOnly
+from restAPI.serializers import PostSerializer, TagSerializer, UserSerializer, PostSerializerLite, CommentSerializer, UserChangedSerializer
+from restAPI.permissions import IsAuthorOrReadOnly, IsUserOrReadOnly
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -49,12 +49,36 @@ class TagViewSet(mixins.CreateModelMixin,
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ReadOnlyModelViewSet,
+                  mixins.CreateModelMixin,
+                  mixins.UpdateModelMixin):
     """
-    处理 /api/users/ GET, 处理 /api/users/<pk>/ GET
+    处理 /api/users/ GET POST, 处理 /api/users/<pk>/ GET POST
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = (IsUserOrReadOnly,)
+
+    def create(self, request, *args, **kwargs):
+        serializer = UserChangedSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = UserChangedSerializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, '_prefetched_objects_cache', None):
+            # If 'prefetch_related' has been applied to a queryset, we need to
+            # forcibly invalidate the prefetch cache on the instance.
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
 
 
 class CommentViewSet(mixins.CreateModelMixin,
